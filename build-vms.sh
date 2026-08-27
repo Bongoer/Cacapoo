@@ -15,7 +15,7 @@ if [ ! -x "${BUILD_DIR}/c2w" ]; then
 fi
 
 "${BUILD_DIR}/c2w" --show-dockerfile > "${BUILD_DIR}/c2w.Dockerfile"
-sed -i 's/3000\*1024\*1024/1536*1024*1024/g; s/TOTAL_MEMORY=2300MB/TOTAL_MEMORY=1536MB/g' "${BUILD_DIR}/c2w.Dockerfile"
+sed -i 's/3000\*1024\*1024/1536*1024*1024/g; s/TOTAL_MEMORY=2300MB/TOTAL_MEMORY=1536MB/g; s#https://github.com/ktock/container2wasm#https://github.com/container2wasm/container2wasm#g' "${BUILD_DIR}/c2w.Dockerfile"
 
 for os_name in debian fedora; do
   image_name="linux64-${os_name}:local"
