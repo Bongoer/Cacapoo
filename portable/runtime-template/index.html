@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Linux x86_64 runtime</title>
+    <link rel="stylesheet" href="https://unpkg.com/@xterm/xterm@5.5.0/css/xterm.css" />
+    <style>
+      html, body, #terminal { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #06090d; }
+      #terminal { padding: 12px; }
+      .xterm { height: 100%; }
+      .xterm-viewport { overscroll-behavior: none; }
+      #status { position: fixed; inset: 0; display: grid; place-items: center; color: #91a0b3; background: #06090d; font: 12px ui-monospace, monospace; z-index: 5; }
+    </style>
+    <script src="../../coi-serviceworker.js"></script>
+  </head>
+  <body>
+    <div id="status">Loading QEMU x86_64...</div>
+    <div id="terminal"></div>
+    <script src="./load.js"></script>
+    <script type="module">
+      import "https://unpkg.com/xterm@5.3.0/lib/xterm.js";
+      import "https://unpkg.com/xterm-pty/index.js";
+      import "./arg-module.js";
+      import initEmscriptenModule from "./out.js";
+
+      const status = document.getElementById("status");
+      const xterm = new Terminal({
+        cursorBlink: true,
+        cursorStyle: "block",
+        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+        fontSize: matchMedia("(max-width: 600px)").matches ? 12 : 14,
+        lineHeight: 1.18,
+        theme: { background: "#06090d", foreground: "#d8dee9", cursor: "#84f492", selectionBackground: "#294235" },
+        scrollback: 3000
+      });
+      xterm.open(document.getElementById("terminal"));
+
+      const resize = () => {
+        const el = document.getElementById("terminal");
+        const charWidth = matchMedia("(max-width: 600px)").matches ? 7.3 : 8.5;
+        const charHeight = matchMedia("(max-width: 600px)").matches ? 15 : 17;
+        xterm.resize(Math.max(40, Math.floor((el.clientWidth - 24) / charWidth)), Math.max(18, Math.floor((el.clientHeight - 24) / charHeight)));
+      };
+      addEventListener("resize", resize);
+      resize();
+
+      const { master, slave } = openpty();
+      xterm.loadAddon(master);
+      Module.pty = slave;
+      Module.mainScriptUrlOrBlob = new URL("./out.js", location.href).href;
+      Module.setStatus = (text) => {
+        if (text) status.textContent = text;
+        parent.postMessage({ type: "linux64-status", text: text || "Starting Linux" }, "*");
+      };
+
+      const info = `t:${Math.round(Date.now() / 1000)}\n`;
+      Module.preRun.push((mod) => {
+        try { mod.FS.mkdir("/pack"); } catch (_) {}
+        mod.FS.writeFile("/pack/info", info);
+      });
+
+      const readableCallbacks = [];
+      Module.pty.onReadable(() => {
+        readableCallbacks.splice(0).forEach((callback) => callback());
+      });
+      Module.preRun.push((mod) => {
+        mod.TTY.stream_ops.poll = (_stream, _timeout, notifyCallback) => {
+          if (mod.pty.readable) return 1;
+          if (notifyCallback) {
+            notifyCallback.registerCleanupFunc(() => {
+              const index = readableCallbacks.indexOf(notifyCallback);
+              if (index !== -1) readableCallbacks.splice(index, 1);
+            });
+            readableCallbacks.push(notifyCallback);
+          }
+          return 0;
+        };
+      });
+
+      addEventListener("message", (event) => {
+        if (event.data?.type === "linux64-key") xterm.input(event.data.key, true);
+        if (event.data?.type === "linux64-focus") xterm.focus();
+      });
+
+      try {
+        await initEmscriptenModule(Module);
+        status.remove();
+        xterm.focus();
+        parent.postMessage({ type: "linux64-ready" }, "*");
+      } catch (error) {
+        status.textContent = `QEMU could not start: ${error?.message || error}`;
+        parent.postMessage({ type: "linux64-status", text: "QEMU failed to start" }, "*");
+      }
+    </script>
+  </body>
+</html>
