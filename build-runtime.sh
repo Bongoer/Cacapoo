@@ -63,7 +63,7 @@ cd /build/qemu-out
 PKG_CONFIG_PATH=/build/target/lib/pkgconfig \
 emconfigure /qemu/configure \
   --static --target-list=x86_64-softmmu --cpu=wasm32 --cross-prefix= \
-  --without-default-features --enable-system --enable-sdl --with-sdlabi=2.0 \
+  --without-default-features --enable-system --enable-sdl \
   --with-coroutine=fiber --enable-virtfs \
   --extra-cflags="$EXTRA_FLAGS" --extra-cxxflags="$EXTRA_FLAGS" --extra-ldflags="$EXTRA_FLAGS"
 emmake make -j"$(nproc)" qemu-system-x86_64
