@@ -1,4 +1,4 @@
-name: Build Linux 64 Web
+name: Build graphical Web QEMU x86_64
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 180
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -25,11 +25,20 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: actions/configure-pages@v5
-      - name: Build Debian and Fedora x86_64 machines
-        run: chmod +x ./build-vms.sh && ./build-vms.sh
+      - name: Restore compiled QEMU runtime
+        id: qemu-cache
+        uses: actions/cache@v4
+        with:
+          path: runtime
+          key: graphical-qemu-x86-64-v2-${{ hashFiles('build-runtime.sh') }}
+      - name: Compile graphical QEMU x86_64
+        if: steps.qemu-cache.outputs.cache-hit != 'true'
+        run: chmod +x build-runtime.sh && ./build-runtime.sh
+      - name: Prepare static site
+        run: chmod +x prepare-site.sh && ./prepare-site.sh
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./site
+          path: site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

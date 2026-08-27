@@ -1,12 +1,19 @@
 # Third-party notices
 
-The build process and generated VM bundles use these upstream projects:
+## QEMU-Wasm
 
-- [container2wasm](https://github.com/container2wasm/container2wasm), Apache License 2.0
-- [QEMU](https://www.qemu.org/), primarily GNU GPL version 2
-- [Linux kernel](https://kernel.org/), GNU GPL version 2
-- [xterm.js](https://github.com/xtermjs/xterm.js), MIT License
-- [xterm-pty](https://github.com/mame/xterm-pty), MIT License
-- Debian and Fedora packages, under the licenses shipped by each distribution
+QEMU-Wasm is derived from QEMU and is distributed under the GNU General Public License, version 2. Source: https://github.com/ktock/qemu-wasm
 
-container2wasm-generated outputs include additional components. Keep the license and copyright files included in the generated guest filesystems when redistributing the site.
+## VirtualBox 6.1 OSE icons
+
+Toolbar and hardware icons are from Oracle VM VirtualBox 6.1 OSE, authored by Oracle Corporation and distributed under the GNU General Public License, version 2 or later. Source pages: https://commons.wikimedia.org/wiki/Category:VirtualBox_icons
+
+The icons are loaded from Wikimedia Commons and are not presented as a trademark or endorsement. Web QEMU Manager is not affiliated with Oracle or VirtualBox.
+
+## VT323
+
+VT323 is designed by Peter Hull and distributed under the SIL Open Font License 1.1. Source: https://github.com/phoikoi/VT323
+
+## xterm.js and xterm-pty
+
+xterm.js is distributed under the MIT License. xterm-pty is distributed under the MIT License.

@@ -1,160 +1,224 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#080c12" />
-    <meta name="description" content="Run real x86_64 Linux in your browser with QEMU WebAssembly." />
-    <title>Linux 64 Web</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <script src="./coi-serviceworker.js"></script>
-  </head>
-  <body>
-    <main class="app-shell">
-      <header class="topbar">
-        <a class="brand" href="./" aria-label="Linux 64 Web home">
-          <span class="brand-mark" aria-hidden="true">64</span>
-          <span>
-            <strong>Linux 64</strong>
-            <small>QEMU in your browser</small>
-          </span>
-        </a>
-        <div class="topbar-meta">
-          <span class="architecture">x86_64</span>
-          <span class="privacy"><i></i> Runs on this device</span>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#d4d0c8">
+  <title>Web QEMU Manager</title>
+  <link rel="stylesheet" href="assets/xterm.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-window" aria-label="Web QEMU virtual machine manager">
+    <header class="titlebar">
+      <div class="titlebar-mark">Q</div>
+      <div class="titlebar-text">Web QEMU Manager</div>
+      <div class="window-controls" aria-hidden="true">
+        <span>_</span><span>□</span><span>×</span>
+      </div>
+    </header>
+
+    <nav class="menubar" aria-label="Application menu">
+      <button type="button" data-menu="file"><u>F</u>ile</button>
+      <button type="button" data-menu="machine"><u>M</u>achine</button>
+      <button type="button" data-menu="help"><u>H</u>elp</button>
+    </nav>
+
+    <section class="toolbar" aria-label="Virtual machine actions">
+      <button id="newVmButton" class="tool-button" type="button">
+        <img src="assets/new.png" alt="">
+        <span>New</span>
+      </button>
+      <button id="settingsButton" class="tool-button" type="button" disabled>
+        <img src="assets/settings.png" alt="">
+        <span>Settings</span>
+      </button>
+      <button id="attachButton" class="tool-button" type="button" disabled>
+        <img src="assets/cd-add.png" alt="">
+        <span>Attach media</span>
+      </button>
+      <div class="toolbar-separator"></div>
+      <button id="startButton" class="tool-button" type="button" disabled>
+        <img src="assets/start.png" alt="">
+        <span>Start</span>
+      </button>
+    </section>
+
+    <section class="workspace">
+      <aside class="machine-pane" aria-label="Virtual machines">
+        <div class="pane-caption">Virtual Machines</div>
+        <div id="machineList" class="machine-list"></div>
+        <div id="emptyList" class="empty-list">
+          <img src="assets/new.png" alt="">
+          <p>No virtual machines</p>
+          <button id="emptyNewButton" type="button">Create one</button>
         </div>
-      </header>
+      </aside>
 
-      <section class="workspace" aria-label="Virtual machine launcher">
-        <aside class="launcher-panel">
-          <div class="section-heading">
-            <p>Choose a system</p>
-            <span id="deviceLabel">Checking this device</span>
+      <section class="details-pane">
+        <div id="welcomePanel" class="welcome-panel">
+          <h1>Welcome to Web QEMU Manager</h1>
+          <p>Create a virtual machine, choose its hardware, and attach your own x86_64 ISO or disk image.</p>
+          <p class="notice-box">No operating system is included. Media stays on this device for the current browser session.</p>
+        </div>
+
+        <div id="detailsPanel" class="details-panel" hidden>
+          <div class="details-heading">
+            <img src="assets/chipset.png" alt="">
+            <div>
+              <h1 id="detailName"></h1>
+              <span id="detailState">Powered Off</span>
+            </div>
           </div>
+          <div class="details-grid">
+            <section class="detail-group">
+              <h2><img src="assets/cpu.png" alt=""> System</h2>
+              <dl>
+                <dt>Architecture</dt><dd>x86_64</dd>
+                <dt>Memory</dt><dd id="detailMemory"></dd>
+                <dt>Processors</dt><dd id="detailCpus"></dd>
+              </dl>
+            </section>
+            <section class="detail-group">
+              <h2><img src="assets/display.png" alt=""> Display</h2>
+              <dl>
+                <dt>Output</dt><dd id="detailDisplay"></dd>
+                <dt>Controller</dt><dd>Standard VGA</dd>
+              </dl>
+            </section>
+            <section class="detail-group">
+              <h2><img src="assets/disk.png" alt=""> Storage</h2>
+              <dl>
+                <dt>Media</dt><dd id="detailMedia"></dd>
+                <dt>Access</dt><dd>Read-only session</dd>
+              </dl>
+            </section>
+          </div>
+        </div>
 
-          <div class="os-list" role="radiogroup" aria-label="Linux distribution">
-            <button class="os-card selected" type="button" data-os="debian" role="radio" aria-checked="true">
-              <span class="os-logo debian-logo">D</span>
-              <span class="os-copy">
-                <strong>Debian</strong>
-                <small>Stable, lightweight shell</small>
-              </span>
-              <span class="ready-dot" title="Ready"></span>
+        <div id="consolePanel" class="console-panel" hidden>
+          <div class="console-toolbar">
+            <button id="showDisplayButton" type="button" class="selected">Display</button>
+            <button id="showSerialButton" type="button">Serial Console</button>
+            <button id="sendCtrlAltDelButton" type="button" disabled title="Not available in this experimental build">Ctrl+Alt+Del</button>
+            <button id="fullscreenButton" type="button">
+              <img src="assets/fullscreen.png" alt=""> Full Screen
             </button>
-            <button class="os-card" type="button" data-os="fedora" role="radio" aria-checked="false">
-              <span class="os-logo fedora-logo">f</span>
-              <span class="os-copy">
-                <strong>Fedora</strong>
-                <small>Current Fedora userland</small>
-              </span>
-              <span class="ready-dot" title="Ready"></span>
-            </button>
-            <button class="os-card" type="button" data-os="alpine" role="radio" aria-checked="false">
-              <span class="os-logo alpine-logo">A</span>
-              <span class="os-copy">
-                <strong>Alpine</strong>
-                <small>Fast QEMU test image</small>
-              </span>
-              <span class="remote-tag">Demo</span>
-            </button>
+            <button id="powerOffButton" type="button">Power Off</button>
           </div>
-
-          <div class="spec-grid" aria-label="Virtual machine specifications">
-            <div>
-              <span>CPU</span>
-              <strong>QEMU TCG</strong>
-            </div>
-            <div>
-              <span>Guest</span>
-              <strong>x86_64</strong>
-            </div>
-            <div>
-              <span>Memory</span>
-              <strong>192 MB</strong>
-            </div>
-            <div>
-              <span>Network</span>
-              <strong>Browser proxy</strong>
-            </div>
+          <div id="displayView" class="display-view">
+            <canvas id="vmCanvas" tabindex="0" aria-label="Virtual machine display"></canvas>
+            <div id="displayMessage">Preparing QEMU display...</div>
           </div>
-
-          <button class="boot-button" id="bootButton" type="button">
-            <span class="play-icon" aria-hidden="true"></span>
-            <span>Boot Debian</span>
-          </button>
-
-          <p class="launcher-note">
-            Nothing is installed on the iPhone. Closing the tab stops the machine.
-          </p>
-        </aside>
-
-        <section class="machine-panel" id="machinePanel" aria-label="Linux machine">
-          <div class="machine-toolbar">
-            <div class="window-lights" aria-hidden="true"><i></i><i></i><i></i></div>
-            <div class="machine-title">
-              <strong id="machineTitle">Debian x86_64</strong>
-              <span id="machineStatus">Ready to boot</span>
-            </div>
-            <div class="machine-actions">
-              <button id="keyboardButton" type="button" title="Show keyboard" aria-label="Show keyboard">⌨</button>
-              <button id="fullscreenButton" type="button" title="Fullscreen" aria-label="Fullscreen">⛶</button>
-              <button id="stopButton" type="button" title="Stop machine" aria-label="Stop machine">■</button>
-            </div>
+          <div id="serialView" class="serial-view" hidden>
+            <div id="terminalHost" aria-label="Serial terminal"></div>
+            <pre id="terminalFallback">WEB QEMU SERIAL CONSOLE\n</pre>
           </div>
-
-          <div class="screen-wrap" id="screenWrap">
-            <div class="empty-state" id="emptyState">
-              <div class="prompt-card" aria-hidden="true">
-                <span>linux64@iphone</span><b>:</b><em>~</em><b>$</b><i></i>
-              </div>
-              <h1>A real 64-bit Linux machine.</h1>
-              <p>Choose Debian or Fedora, then press Boot.</p>
-              <div class="feature-row">
-                <span>WebAssembly</span><span>QEMU</span><span>No server VM</span>
-              </div>
-            </div>
-            <div class="loading-state hidden" id="loadingState" aria-live="polite">
-              <div class="loader-ring"></div>
-              <strong id="loadingTitle">Starting QEMU</strong>
-              <span id="loadingText">Preparing the x86_64 machine</span>
-              <div class="progress-track"><i id="progressBar"></i></div>
-            </div>
-            <iframe
-              id="vmFrame"
-              class="vm-frame hidden"
-              title="Linux x86_64 terminal"
-              allow="fullscreen; clipboard-read; clipboard-write"
-            ></iframe>
-          </div>
-
-          <div class="key-strip" aria-label="Terminal shortcut keys">
-            <button type="button" data-key="\u0003">Ctrl+C</button>
-            <button type="button" data-key="\u001b">Esc</button>
-            <button type="button" data-key="\t">Tab</button>
-            <button type="button" data-key="\u001b[D">←</button>
-            <button type="button" data-key="\u001b[A">↑</button>
-            <button type="button" data-key="\u001b[B">↓</button>
-            <button type="button" data-key="\u001b[C">→</button>
-            <button type="button" data-key="/">/</button>
-            <button type="button" data-key="|">|</button>
-            <button type="button" data-key="-">-</button>
-          </div>
-        </section>
-      </section>
-
-      <section class="compatibility" id="compatibility" aria-live="polite">
-        <span class="compat-icon">i</span>
-        <div>
-          <strong id="compatTitle">Checking browser support</strong>
-          <p id="compatText">Web QEMU needs WebAssembly, workers and isolated memory.</p>
         </div>
       </section>
+    </section>
 
-      <footer>
-        <span>Linux 64 Web</span>
-        <span>Real x86_64 emulation powered by QEMU WebAssembly</span>
-      </footer>
-    </main>
-    <script src="./app.js"></script>
-  </body>
+    <footer class="statusbar">
+      <span id="statusText">Ready</span>
+      <span>QEMU x86_64 / WebAssembly</span>
+    </footer>
+  </main>
+
+  <dialog id="newVmDialog" class="classic-dialog">
+    <form id="newVmForm" method="dialog">
+      <div class="dialog-title">Create Virtual Machine</div>
+      <div class="dialog-content">
+        <fieldset>
+          <legend>Name and media</legend>
+          <label>Machine name <input id="vmName" name="vmName" required maxlength="40" value="My Virtual Machine"></label>
+          <label>ISO or disk image
+            <input id="vmMedia" name="vmMedia" type="file" required accept=".iso,.img,.raw,.qcow2,.vhd,.vhdx,.bin">
+          </label>
+          <small>Fedora, Debian, Windows and other x86_64 media can be selected. Nothing is uploaded to the website.</small>
+        </fieldset>
+        <fieldset>
+          <legend>Hardware</legend>
+          <label>Base memory
+            <select id="vmMemory" name="vmMemory">
+              <option value="256">256 MB</option>
+              <option value="512" selected>512 MB</option>
+              <option value="768">768 MB</option>
+              <option value="1024">1024 MB (desktop browsers)</option>
+            </select>
+          </label>
+          <label>Processors
+            <select id="vmCpus" name="vmCpus">
+              <option value="1" selected>1 CPU</option>
+              <option value="2">2 CPUs</option>
+              <option value="4">4 CPUs</option>
+            </select>
+          </label>
+          <label>Display
+            <select id="vmDisplay" name="vmDisplay">
+              <option value="graphical" selected>Graphical SDL display + serial</option>
+              <option value="serial">Text-only serial console</option>
+            </select>
+          </label>
+        </fieldset>
+        <div class="compatibility-note">Large desktop ISOs may exceed mobile browser memory. Serial mode requires the guest to support a serial console.</div>
+      </div>
+      <div class="dialog-buttons">
+        <button value="cancel" type="button" data-close-dialog>Cancel</button>
+        <button value="default" type="submit">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog" class="classic-dialog">
+    <form id="settingsForm" method="dialog">
+      <div class="dialog-title">Virtual Machine Settings</div>
+      <div class="dialog-content">
+        <fieldset>
+          <legend>General</legend>
+          <label>Machine name <input id="settingsVmName" required maxlength="40"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Hardware</legend>
+          <label>Base memory
+            <select id="settingsVmMemory">
+              <option value="256">256 MB</option>
+              <option value="512">512 MB</option>
+              <option value="768">768 MB</option>
+              <option value="1024">1024 MB (desktop browsers)</option>
+            </select>
+          </label>
+          <label>Processors
+            <select id="settingsVmCpus">
+              <option value="1">1 CPU</option>
+              <option value="2">2 CPUs</option>
+              <option value="4">4 CPUs</option>
+            </select>
+          </label>
+          <label>Display
+            <select id="settingsVmDisplay">
+              <option value="graphical">Graphical SDL display + serial</option>
+              <option value="serial">Text-only serial console</option>
+            </select>
+          </label>
+        </fieldset>
+      </div>
+      <div class="dialog-buttons">
+        <button type="button" data-close-settings>Cancel</button>
+        <button type="submit">OK</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="messageDialog" class="classic-dialog small-dialog">
+    <div class="dialog-title" id="messageTitle">Web QEMU Manager</div>
+    <div class="dialog-content"><p id="messageText"></p></div>
+    <div class="dialog-buttons"><button type="button" data-close-message>OK</button></div>
+  </dialog>
+
+  <input id="reattachInput" type="file" hidden accept=".iso,.img,.raw,.qcow2,.vhd,.vhdx,.bin">
+  <script src="coi-serviceworker.js"></script>
+  <script src="assets/xterm.js"></script>
+  <script src="assets/xterm-pty.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
 </html>

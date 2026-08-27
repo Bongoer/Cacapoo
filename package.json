@@ -1,0 +1,7 @@
+{
+  "name": "web-qemu-classic",
+  "private": true,
+  "scripts": {
+    "dev": "node dev-server.mjs"
+  }
+}
