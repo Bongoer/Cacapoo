@@ -16,7 +16,25 @@ fi
 git -C "${BUILD_DIR}/qemu" fetch --depth 1 origin "${QEMU_COMMIT}"
 git -C "${BUILD_DIR}/qemu" checkout --detach "${QEMU_COMMIT}"
 
-docker build --progress=plain -t web-qemu-emsdk "${BUILD_DIR}/qemu"
+# The pinned upstream Dockerfile uses zlib.net's moving release URL. Once a
+# release is archived that URL can return an HTML error page, which tar reports
+# as "File format not recognized". Use zlib's permanent fossils archive and
+# fail/retry cleanly on network errors.
+sed -i \
+  's|curl -Ls https://zlib.net/zlib-$ZLIB_VERSION.tar.xz|curl -fL --retry 5 --retry-all-errors -sS https://zlib.net/fossils/zlib-$ZLIB_VERSION.tar.gz|' \
+  "${BUILD_DIR}/qemu/Dockerfile"
+sed -i \
+  's|tar xJC /zlib|tar xzC /zlib|' \
+  "${BUILD_DIR}/qemu/Dockerfile"
+
+if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+  docker buildx build --load --progress=plain \
+    --cache-from type=gha,scope=web-qemu-emsdk \
+    --cache-to type=gha,mode=max,scope=web-qemu-emsdk \
+    -t web-qemu-emsdk "${BUILD_DIR}/qemu"
+else
+  docker build --progress=plain -t web-qemu-emsdk "${BUILD_DIR}/qemu"
+fi
 docker rm -f web-qemu-build >/dev/null 2>&1 || true
 docker run --rm -d --name web-qemu-build \
   -v "${BUILD_DIR}/qemu:/qemu:ro" \
